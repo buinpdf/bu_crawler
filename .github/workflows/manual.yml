@@ -38,6 +38,7 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE
         cmake -S . -B build
+        cmake --build build
         cd build
         ./bu_crawler ${{inputs.y}} bu${{inputs.y}}.html ca${{inputs.y}}.html
         wget https://github.com/abramov7613/dompdfui/releases/download/v1.2.4/dompdfui_linux_x86_64.zip
