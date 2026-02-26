@@ -43,7 +43,7 @@ jobs:
         ./bu_crawler ${{inputs.y}} bu${{inputs.y}}.html ca${{inputs.y}}.html
         wget https://github.com/abramov7613/dompdfui/releases/download/v1.2.4/dompdfui_linux_x86_64.zip
         unzip dompdfui_linux_x86_64.zip
-        ./dompdfui bu${{inputs.y}}.html ca${{inputs.y}}.html .
+        ./dompdfui -m 1073741824 bu${{inputs.y}}.html ca${{inputs.y}}.html .
 
     - name: Upload art
       uses: actions/upload-artifact@v4
