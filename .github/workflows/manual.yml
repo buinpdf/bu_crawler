@@ -1,0 +1,51 @@
+# This is a basic workflow that is manually triggered
+
+name: Manual workflow
+
+# Controls when the action will run. Workflow runs when manually triggered using the UI
+# or API.
+on:
+  workflow_dispatch:
+    # Inputs the workflow accepts.
+    inputs:
+      y:
+        # Friendly description to be shown in the UI instead of 'name'
+        description: 'input year'
+        # Default value if no value is explicitly provided
+        default: 2026
+        # Input has to be provided for the workflow to run
+        required: true
+        # The data type of the input
+        type: number
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "greet"
+  greet:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential libssl-dev git pkg-config wget libboost-all-dev
+
+    - uses: actions/checkout@v4
+
+    - name: Build project
+      run: |
+        cd $GITHUB_WORKSPACE
+        cmake -S . -B build
+        cd build
+        ./bu_crawler ${{inputs.y}} bu${{inputs.y}}.html ca${{inputs.y}}.html
+        wget https://github.com/abramov7613/dompdfui/releases/download/v1.2.4/dompdfui_linux_x86_64.zip
+        unzip dompdfui_linux_x86_64.zip
+        ./dompdfui bu${{inputs.y}}.html ca${{inputs.y}}.html .
+
+    - name: Upload art
+      uses: actions/upload-artifact@v4
+      with:
+        path: build/*.pdf
+        
