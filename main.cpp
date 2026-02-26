@@ -55,6 +55,7 @@ int main(int argc, char** argv)
   const auto host = "api.patriarchia.ru";
   const auto path = "/v1/events/"; // YYYY-MM-DD [in julian calendar]
   const auto port = "443";
+  bool date_not_found {};
 
   try
   {
@@ -68,8 +69,8 @@ int main(int argc, char** argv)
     };
 
     std::vector<dc::Date> targets;
-    for (int m = 1; m < 2; ++m)
-      for (int d = 1; d <= 5/*dc::month_length(m, dc::is_leap_year(argv[1], dc::Julian))*/; ++d) {
+    for (int m = 1; m < 13; ++m)
+      for (int d = 1; d <= dc::month_length(m, dc::is_leap_year(argv[1], dc::Julian)); ++d) {
         targets.emplace_back(argv[1], m, d, dc::Julian);
       }
 
@@ -176,6 +177,7 @@ int main(int argc, char** argv)
       catch(const std::exception&)
       {
         nw::cout << "content not found for date:" << target.format() << "\n\n" << res.base() << '\n' ;
+        date_not_found = true;
         break ;
       }
       auto json_text_to_html = [](std::string_view in){
@@ -205,7 +207,7 @@ int main(int argc, char** argv)
     out_ca << "\n</body>\n</html>\n";
     out_bu.close();
     out_ca.close();
-    nw::cout << "Complete!\n" ;
+    if (!date_not_found) nw::cout << "Complete!\n" ;
   }
   catch(std::exception const& e)
   {
