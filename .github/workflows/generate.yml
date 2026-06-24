@@ -2,7 +2,7 @@ name: schedule bu generator
 
 on:
   schedule:
-  - cron: '50 19 24 * *'
+    - cron: '15 20 24 * *'
 
 jobs:
   generate:
