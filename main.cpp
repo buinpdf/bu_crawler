@@ -55,7 +55,7 @@ int main(int argc, char** argv)
   const auto host = "api.patriarchia.ru";
   const auto path = "/v1/events/"; // YYYY-MM-DD [in julian calendar]
   const auto port = "443";
-  bool date_not_found {};
+  std::string last_processed_date ;
 
   try
   {
@@ -176,8 +176,6 @@ int main(int argc, char** argv)
       }
       catch(const std::exception&)
       {
-        nw::cout << "content not found for date:" << target.format() << "\n\n" << res.base() << '\n' ;
-        date_not_found = true;
         break ;
       }
       auto json_text_to_html = [](std::string_view in){
@@ -201,13 +199,14 @@ int main(int argc, char** argv)
       out_ca << "<hr><p>" << os.view() << target.format("%WD") << "</p>\n" << ca_text << '\n'
         << html_vertical_empty_space << '\n' ;
       stream.shutdown();
+      last_processed_date = target.format("%Gd %GM %GY");
     }
 
     out_bu << "\n</body>\n</html>\n";
     out_ca << "\n</body>\n</html>\n";
     out_bu.close();
     out_ca.close();
-    if (!date_not_found) nw::cout << "Complete!\n" ;
+    if (last_processed_date.empty()) THROW("last_processed_date variable is empty");
   }
   catch(std::exception const& e)
   {
@@ -219,5 +218,6 @@ int main(int argc, char** argv)
     nw::cout << "Unknown exception" << std::endl;
     return EXIT_FAILURE;
   }
+  nw::cout << last_processed_date << '\n';
   return EXIT_SUCCESS;
 }
