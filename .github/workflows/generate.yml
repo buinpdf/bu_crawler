@@ -2,7 +2,7 @@ name: schedule bu generator
 
 on:
   schedule:
-    - cron: '0 5 22 * *'
+    - cron: '0 5 28 * *'
     
   workflow_dispatch: 
 
@@ -30,7 +30,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/build
           echo "ldate=$(./bu_crawler ${{steps.my_env.outputs.year}} bu${{steps.my_env.outputs.year}}.html ca${{steps.my_env.outputs.year}}.html)" >> $GITHUB_OUTPUT
-          wget https://github.com/abramov7613/dompdfui/releases/download/v1.2.4/dompdfui_linux_x86_64.zip
+          wget --no-verbose https://github.com/abramov7613/dompdfui/releases/download/v1.2.4/dompdfui_linux_x86_64.zip
           unzip dompdfui_linux_x86_64.zip
           ./dompdfui -m 1073741824 bu${{steps.my_env.outputs.year}}.html ca${{steps.my_env.outputs.year}}.html .
 
