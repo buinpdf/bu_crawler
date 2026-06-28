@@ -2,7 +2,7 @@ name: schedule bu generator
 
 on:
   schedule:
-    - cron: '0 5 28 * *'
+    - cron: '15 2 2 * *'
     
   workflow_dispatch: 
 
@@ -40,6 +40,8 @@ jobs:
           git clone https://github.com/buinpdf/download.git
           cp -f -t download bu${{steps.my_env.outputs.year}}.pdf ca${{steps.my_env.outputs.year}}.pdf
           cd ./download
+          git config --global user.name "buinpdf"
+          git config --global user.email "buinpdf@atomicmail.io"
           git remote set-url origin https://${{secrets.TOKEN}}@github.com/buinpdf/download.git
           git add .
           git commit -m "обновлено до ${{steps.gen.outputs.ldate}}"
