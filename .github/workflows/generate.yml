@@ -2,9 +2,9 @@ name: schedule bu generator
 
 on:
   schedule:
-    - cron: '15 1 2 * *'
-    - cron: '15 1 12 * *'
-    - cron: '15 1 22 * *'
+    - cron: '15 1 6 * *'
+    - cron: '15 1 16 * *'
+    - cron: '15 1 26 * *'
     
   workflow_dispatch: 
 
