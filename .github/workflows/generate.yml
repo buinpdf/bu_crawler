@@ -33,18 +33,19 @@ jobs:
           cd $GITHUB_WORKSPACE/build
           echo "ldate=$(./bu_crawler ${{steps.my_env.outputs.year}} bu${{steps.my_env.outputs.year}}.html ca${{steps.my_env.outputs.year}}.html)" >> $GITHUB_OUTPUT
           wget --no-verbose https://github.com/abramov7613/dompdfui/releases/download/v1.2.4/dompdfui_linux_x86_64.zip
-          unzip -qq dompdfui_linux_x86_64.zip
+          unzip dompdfui_linux_x86_64.zip > /dev/null
           ./dompdfui -m 1073741824 bu${{steps.my_env.outputs.year}}.html ca${{steps.my_env.outputs.year}}.html .
 
       - name: save in repo
         run: |
           cd $GITHUB_WORKSPACE/build
+          git config --global user.name "buinpdf"
+          git config --global user.email "buinpdf@atomicmail.io"
           git clone https://github.com/buinpdf/download.git
           cp -f -t download bu${{steps.my_env.outputs.year}}.pdf ca${{steps.my_env.outputs.year}}.pdf
           cd ./download
-          git config --global user.name "buinpdf"
-          git config --global user.email "buinpdf@atomicmail.io"
           git remote set-url origin https://${{secrets.TOKEN}}@github.com/buinpdf/download.git
+          git reset --hard HEAD~1
           git add .
           git commit -m "обновлено до ${{steps.gen.outputs.ldate}}"
-          git push
+          git push origin main --force
