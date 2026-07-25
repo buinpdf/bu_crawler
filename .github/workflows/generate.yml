@@ -35,6 +35,7 @@ jobs:
 
       - name: generate doc
         run: |
+          cd $GITHUB_WORKSPACE/build
           wget --no-verbose https://github.com/abramov7613/dompdfui/releases/download/v1.2.4/dompdfui_linux_x86_64.zip
           unzip dompdfui_linux_x86_64.zip > /dev/null
           ./dompdfui -m 1073741824 bu${{steps.my_env.outputs.year}}.html ca${{steps.my_env.outputs.year}}.html .
