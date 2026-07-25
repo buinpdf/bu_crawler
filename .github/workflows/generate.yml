@@ -24,14 +24,17 @@ jobs:
       - name: build cpp proj
         run: |
           cd $GITHUB_WORKSPACE
-          cmake -S . -B build
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
           cmake --build build
 
-      - name: generate doc
-        id: gen
+      - name: download doc
+        id: dl
         run: |
           cd $GITHUB_WORKSPACE/build
           echo "ldate=$(./bu_crawler ${{steps.my_env.outputs.year}} bu${{steps.my_env.outputs.year}}.html ca${{steps.my_env.outputs.year}}.html)" >> $GITHUB_OUTPUT
+
+      - name: generate doc
+        run: |
           wget --no-verbose https://github.com/abramov7613/dompdfui/releases/download/v1.2.4/dompdfui_linux_x86_64.zip
           unzip dompdfui_linux_x86_64.zip > /dev/null
           ./dompdfui -m 1073741824 bu${{steps.my_env.outputs.year}}.html ca${{steps.my_env.outputs.year}}.html .
@@ -50,6 +53,6 @@ jobs:
           cp -f -t download bu${{steps.my_env.outputs.year}}.pdf ca${{steps.my_env.outputs.year}}.pdf
           cd ./download
           git add .
-          git commit -m "обновлено до ${{steps.gen.outputs.ldate}}"
+          git commit -m "обновлено до ${{steps.dl.outputs.ldate}}"
           git push
           
