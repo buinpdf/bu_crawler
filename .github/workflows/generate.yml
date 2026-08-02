@@ -15,8 +15,10 @@ jobs:
       - name: install env
         id: my_env
         run: |
-         sudo apt-get update
+          sudo apt-get update
           sudo apt-get install -y cmake build-essential libssl-dev git pkg-config wget libboost-all-dev
+          git config --global user.name "buinpdf"
+          git config --global user.email "buinpdf@atomicmail.io"
           echo "year=$(date +%Y)" >> $GITHUB_OUTPUT
 
       - uses: actions/checkout@v4
@@ -29,30 +31,38 @@ jobs:
 
       - name: download doc
         id: dl
+        working-directory: build
         run: |
-          cd $GITHUB_WORKSPACE/build
           echo "ldate=$(./bu_crawler ${{steps.my_env.outputs.year}} bu${{steps.my_env.outputs.year}}.html ca${{steps.my_env.outputs.year}}.html)" >> $GITHUB_OUTPUT
 
       - name: generate doc
+        working-directory: build
         run: |
-          cd $GITHUB_WORKSPACE/build
           wget --no-verbose https://github.com/abramov7613/dompdfui/releases/download/v1.2.4/dompdfui_linux_x86_64.zip
           unzip dompdfui_linux_x86_64.zip > /dev/null
           ./dompdfui -m 1073741824 bu${{steps.my_env.outputs.year}}.html ca${{steps.my_env.outputs.year}}.html .
-
-      - name: save in repo
+          
+      - name: clone download repo
+        id: cln
+        working-directory: build
         run: |
-          cd $GITHUB_WORKSPACE/build
-          git config --global user.name "buinpdf"
-          git config --global user.email "buinpdf@atomicmail.io"
           git clone https://github.com/buinpdf/download.git
-          cd ./download
+          echo "current_bu=$(ls ./download/ | grep bu${{steps.my_env.outputs.year}})" >> $GITHUB_OUTPUT
+        
+      - name: prepare download repo
+        if: contains(steps.cln.outputs.current_bu, 'pdf')
+        working-directory: build/download
+        run: |
           git remote set-url origin https://${{secrets.TOKEN}}@github.com/buinpdf/download.git
           git reset --hard HEAD~1
           git push origin main --force
-          cd ..
+
+      - name: save result
+        working-directory: build
+        run: |
           cp -f -t download bu${{steps.my_env.outputs.year}}.pdf ca${{steps.my_env.outputs.year}}.pdf
           cd ./download
+          git remote set-url origin https://${{secrets.TOKEN}}@github.com/buinpdf/download.git
           git add .
           git commit -m "обновлено до ${{steps.dl.outputs.ldate}}"
           git push
