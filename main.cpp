@@ -162,8 +162,7 @@ int main(int argc, char** argv)
 
       // Receive the HTTP response
       http::read(stream, buffer, res);
-      if (res.result_int() != 200)
-        THROW("HTTP Server error:\n\n" , res.base());
+      if (res.result_int() != 200) THROW(res.base());
 
       // extract text from result message
       std::string bu_text, ca_text;
