@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <vector>
 #include <chrono>
+#include <thread>
+#include <random>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
@@ -56,6 +58,9 @@ int main(int argc, char** argv)
   const auto path = "/v1/events/"; // YYYY-MM-DD [in julian calendar]
   const auto port = "443";
   std::string last_processed_date ;
+  std::random_device rd;  
+  std::mt19937 gen(rd()); 
+  std::uniform_int_distribution<> distrib(1, 6);
 
   try
   {
@@ -199,6 +204,7 @@ int main(int argc, char** argv)
         << html_vertical_empty_space << '\n' ;
       stream.shutdown();
       last_processed_date = target.format("%Gd %GM %GY");
+      std::this_thread::sleep_for(std::chrono::seconds( distrib(gen) ));
     }
 
     out_bu << "\n</body>\n</html>\n";
