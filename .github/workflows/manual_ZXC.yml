@@ -7,6 +7,10 @@ name: Manual workflow ZXC
 on:
   workflow_dispatch:
 
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "greet"
@@ -17,19 +21,30 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Runs a single command using the runners shell
-    - name: Send greeting
-      run: |
-        cd ~
-        mkdir U4jsdfh23
+    - uses: actions/checkout@v4
+    
+    - name: Configure CMake
+      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
-    - name: Cache
-      if: always()
+    - name: Build
+      # Build your program with the given configuration
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    - name: mkdir
+      working-directory: ${{github.workspace}}/build
+      # Execute tests defined by the CMake configuration.
+      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+      run: mkdir bu_crawler_cache
+
+    - name: restore Cache
       uses: actions/cache/restore@v5
       with:
         key: ${{ runner.os }}_bu_crawler_cache
-        path: ~/U4jsdfh23
+        path: ${{github.workspace}}/build/bu_crawler_cache
 
     - name: LS
-      run: ls -al ~/U4jsdfh23
+      run: ls -al ${{github.workspace}}/build/bu_crawler_cache
         
         
