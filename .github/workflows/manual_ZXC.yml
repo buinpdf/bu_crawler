@@ -20,13 +20,16 @@ jobs:
     - name: Send greeting
       run: |
         cd ~
-        git clone https://github.com/buinpdf/fluffy-octo-fortnight.git
+        mkdir U4jsdfh23
 
     - name: Cache
       if: always()
-      uses: actions/cache/save@v5
+      uses: actions/cache/restore@v5
       with:
         key: ${{ runner.os }}_bu_crawler_cache
-        path: ~/fluffy-octo-fortnight/*
+        path: ~/U4jsdfh23
+
+    - name: LS
+      run: ls -al ~/U4jsdfh23
         
         
