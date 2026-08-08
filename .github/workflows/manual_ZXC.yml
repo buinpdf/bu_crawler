@@ -1,0 +1,32 @@
+# This is a basic workflow that is manually triggered
+
+name: Manual workflow ZXC
+
+# Controls when the action will run. Workflow runs when manually triggered using the UI
+# or API.
+on:
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "greet"
+  greet:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Runs a single command using the runners shell
+    - name: Send greeting
+      run: |
+        cd ~
+        git clone https://github.com/buinpdf/fluffy-octo-fortnight.git
+
+    - name: Cache
+      if: always()
+      uses: actions/cache/save@v5
+      with:
+        key: ${{ runner.os }}_bu_crawler_cache
+        path: ~/fluffy-octo-fortnight/*
+        
+        
