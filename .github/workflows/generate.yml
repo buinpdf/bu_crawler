@@ -2,9 +2,12 @@ name: schedule bu generator
 
 on:
   schedule:
-    - cron: '15 1 8 * *'
-    - cron: '15 1 18 * *'
-    - cron: '15 1 28 * *'
+    - cron: '15 1 1 * *'
+    - cron: '15 1 6 * *'
+    - cron: '15 1 11 * *'
+    - cron: '15 1 16 * *'
+    - cron: '15 1 21 * *'
+    - cron: '15 1 26 * *'
     
   workflow_dispatch: 
 
@@ -15,8 +18,7 @@ jobs:
       - name: install env
         id: my_env
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake build-essential libssl-dev git pkg-config wget libboost-all-dev
+          sudo apt-get install -y libssl-dev libboost-all-dev
           git config --global user.name "buinpdf"
           git config --global user.email "buinpdf@atomicmail.io"
           echo "year=$(date +%Y)" >> $GITHUB_OUTPUT
@@ -28,6 +30,8 @@ jobs:
           cd $GITHUB_WORKSPACE
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
           cmake --build build
+          cd build
+          mkdir bu_crawler_cache
 
       - name: download doc
         id: dl
