@@ -9,6 +9,8 @@
 #include <chrono>
 #include <thread>
 #include <random>
+#include <filesystem>
+#include <unordered_map>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
@@ -23,6 +25,7 @@
 #include "dates_conv.h"
 #include "lex.h"
 
+namespace fs = std::filesystem;
 namespace beast = boost::beast;
 namespace http = beast::http;
 namespace net = boost::asio;
@@ -51,6 +54,17 @@ int main(int argc, char** argv)
       return EXIT_FAILURE;
   }
 
+  // decls
+  const ch::time_point now {ch::system_clock::now()};
+  const ch::year_month_day ymd {ch::floor<ch::days>(now)};
+  const dc::Date current_date {
+    static_cast<unsigned>(static_cast<int>(ymd.year())),
+    static_cast<int>(static_cast<unsigned>(ymd.month())),
+    static_cast<int>(static_cast<unsigned>(ymd.day())),
+    dc::Grigorian
+  };
+  const auto app_dir_path = fs::absolute(fs::path(argv[0])).lexically_normal().remove_filename() ;
+  const auto cache_path = app_dir_path / "bu_crawler_cache" ;
   const auto user_agent = "Mozilla/5.0 (X11; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" ;
   const auto html_vertical_empty_space = "<p style=\"margin-bottom:2cm;margin-top:2cm;\">&nbsp;</p>";
   const auto err_cant_create = "can't create file: ";
@@ -58,33 +72,40 @@ int main(int argc, char** argv)
   const auto path = "/v1/events/"; // YYYY-MM-DD [in julian calendar]
   const auto port = "443";
   std::string last_processed_date ;
-  std::random_device rd;  
-  std::mt19937 gen(rd()); 
-  std::uniform_int_distribution<> distrib(1, 6);
+  std::unordered_map<std::string, std::string> cache_data;
+  std::vector<dc::Date> targets;
+  auto random = [] (int min, int max) {
+    static auto rd = std::random_device{};
+    static auto gen = std::mt19937{rd()};
+    static auto distrib = std::uniform_int_distribution{};
+    return distrib(gen, decltype(distrib)::param_type(min, max));
+  };
 
   try
   {
-    const ch::time_point now {ch::system_clock::now()};
-    const ch::year_month_day ymd {ch::floor<ch::days>(now)};
-    const dc::Date current_date {
-      static_cast<unsigned>(static_cast<int>(ymd.year())),
-      static_cast<int>(static_cast<unsigned>(ymd.month())),
-      static_cast<int>(static_cast<unsigned>(ymd.day())),
-      dc::Grigorian
-    };
-
-    std::vector<dc::Date> targets;
-    for (int m = 1; m < 13; ++m)
-      for (int d = 1; d <= dc::month_length(m, dc::is_leap_year(argv[1], dc::Julian)); ++d) {
-        targets.emplace_back(argv[1], m, d, dc::Julian);
+    // load data from cache
+    if (!fs::exists(cache_path)) fs::create_directory(cache_path) ;
+    for (auto const& dir_entry : fs::directory_iterator{cache_path}) if (dir_entry.is_regular_file()) {
+      if (nw::ifstream is{dir_entry.path(), std::ios::binary | std::ios::ate}) {
+        auto size = is.tellg();
+        std::string val(size, '\0'); // construct string to stream size
+        is.seekg(0);
+        if (is.read(&val[0], size)) cache_data[dir_entry.path().filename().string()] = std::move(val);
+        is.close();
       }
+    }
+    if (!cache_data.empty()) nw::cout << "load from cache " << cache_data.size() << " entries.\n" ;
 
+    // generate target dates
+    for (int m = 1; m < 13; ++m) for (int d = 1; d <= dc::month_length(m, dc::is_leap_year(argv[1], dc::Julian)); ++d) {
+      targets.emplace_back(argv[1], m, d, dc::Julian);
+    }
+
+    // write headers to out files
     nw::ofstream out_bu (argv[2]);
       if (!out_bu.is_open()) THROW(err_cant_create, argv[2]);
-
     nw::ofstream out_ca (argv[3]);
       if (!out_ca.is_open()) THROW(err_cant_create, argv[3]);
-
     std::ostringstream os;
     os << "<!DOCTYPE html><html lang=\"ru-RU\"><head>"
           "<meta charset='UTF-8'><title>Богослужебные указания " << argv[1] <<
@@ -95,10 +116,8 @@ int main(int argc, char** argv)
           "<p>Документ сгенерирован автоматически " << current_date.format("%Gd %GM %GY г.") <<
           " (" << current_date.format("%Jd %JM %JY г.") << " по ст. ст.)"
           " на основе материалов сайта www.patriarchia.ru</p>\n" ;
-
     out_bu << os.view();
     out_ca << lx::gsub( os.view(), "Богослужебные указания", "Богослужебный календарь" );
-
     auto print_tables_for = [year=argv[1]](int first_month, int last_month, std::ostream& out){
       out << "<table><tr>" ;
       for (int m = first_month; m <= last_month; ++m) {
@@ -111,7 +130,6 @@ int main(int argc, char** argv)
       }
       out << "</tr></table>\n" ;
     };
-
     out_bu << "<h3>Содержание (даты по ст. ст.)</h3>\n" ;
     print_tables_for(1, 3, out_bu);
     print_tables_for(4, 6, out_bu);
@@ -119,93 +137,90 @@ int main(int argc, char** argv)
     print_tables_for(10, 12, out_bu);
     out_bu << html_vertical_empty_space << '\n' ;
 
-    // The io_context is required for all I/O
-    net::io_context ioc;
+    net::io_context ioc;// The io_context is required for all I/O
+    ssl::context ctx(ssl::context::tlsv12_client);// The SSL context is required, and holds certificates
+    load_root_certificates(ctx);// This holds the root certificate used for verification
+    ctx.set_verify_mode(ssl::verify_peer);// Verify the remote server's certificate
 
-    // The SSL context is required, and holds certificates
-    ssl::context ctx(ssl::context::tlsv12_client);
-
-    // This holds the root certificate used for verification
-    load_root_certificates(ctx);
-
-    // Verify the remote server's certificate
-    ctx.set_verify_mode(ssl::verify_peer);
-
+    // begin loop to retrive target dates
     for(const auto& target: targets) {
-      // These objects perform our I/O
-      tcp::resolver resolver(ioc);
-      ssl::stream<beast::tcp_stream> stream(ioc, ctx);
-      // Set SNI Hostname (many hosts need this to handshake successfully)
-      if(! SSL_set_tlsext_host_name(stream.native_handle(), host))
-      {
-          beast::error_code ec{static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()};
-          throw beast::system_error{ec};
-      }
-      // Look up the domain name
-      auto const results = resolver.resolve(host, port);
-      // Make the connection on the IP address we get from a lookup
-      beast::get_lowest_layer(stream).connect(results);
-      // Perform the SSL handshake
-      stream.handshake(ssl::stream_base::client);
-      // Set up an HTTP GET request message
-      http::request<http::string_body> req {
-        http::verb::get,
-        std::string(path) + target.format(),
-        11
-      };
-      req.set(http::field::host, host);
-      req.set(http::field::user_agent, user_agent);
-
-      // Send the HTTP request to the remote host
-      http::write(stream, req);
-
-      // This buffer is used for reading and must be persisted
-      beast::flat_buffer buffer;
-
-      // Declare a container to hold the response
-      http::response<http::string_body> res;
-
-      // Receive the HTTP response
-      http::read(stream, buffer, res);
-      if (res.result_int() != 200) THROW(res.base());
-
-      // extract text from result message
       std::string bu_text, ca_text;
-      try
-      {
-        js::value jv = js::parse( res.body() );
-        const js::object& obj = jv.as_object();
-        bu_text = js::value_to<std::string>( obj.at( "content" ) );
-        ca_text = js::value_to<std::string>( obj.at( "calendar_text" ) );
+      std::string jdate_str = target.format() ;
+      const bool cache_hit = cache_data.contains("bu"+jdate_str) && cache_data.contains("ca"+jdate_str) ;
+      if (cache_hit) {
+        bu_text = cache_data["bu"+jdate_str] ;
+        ca_text = cache_data["ca"+jdate_str] ;
+      } else {
+        // These objects perform our I/O
+        tcp::resolver resolver(ioc);
+        ssl::stream<beast::tcp_stream> stream(ioc, ctx);
+        // Set SNI Hostname (many hosts need this to handshake successfully)
+        if(! SSL_set_tlsext_host_name(stream.native_handle(), host))
+        {
+            beast::error_code ec{static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()};
+            throw beast::system_error{ec};
+        }
+        // Look up the domain name
+        auto const results = resolver.resolve(host, port);
+        // Make the connection on the IP address we get from a lookup
+        beast::get_lowest_layer(stream).connect(results);
+        // Perform the SSL handshake
+        stream.handshake(ssl::stream_base::client);
+        // Set up an HTTP GET request message
+        http::request<http::string_body> req {http::verb::get, std::string(path) + jdate_str, 11};
+        req.set(http::field::host, host);
+        req.set(http::field::user_agent, user_agent);
+        // Send the HTTP request to the remote host
+        http::write(stream, req);
+        // This buffer is used for reading and must be persisted
+        beast::flat_buffer buffer;
+        // Declare a container to hold the response
+        http::response<http::string_body> res;
+        // Receive the HTTP response
+        http::read(stream, buffer, res);
+        if (res.result_int() != 200) THROW(res.base());
+        // extract text from result message
+        try
+        {
+          js::value jv = js::parse( res.body() );
+          const js::object& obj = jv.as_object();
+          bu_text = js::value_to<std::string>( obj.at( "content" ) );
+          ca_text = js::value_to<std::string>( obj.at( "calendar_text" ) );
+        }
+        catch(const std::exception&)
+        {
+          break ;
+        }
+        auto json_text_to_html = [](std::string_view in){
+          std::string result = lx::gsub( in, "\\\\u(%x%x%x%x)", "&#x%1;" );
+          result = lx::gsub( result, "\\\\/", "/" );
+          result = lx::gsub( result, "\\r", "" );
+          result = lx::gsub( result, "\\n", "" );
+          result = lx::gsub( result, "<a[^>]+>([^<]+)</a>", "%1" );
+          return result;
+        };
+        bu_text = json_text_to_html(bu_text);
+        ca_text = json_text_to_html(ca_text);
+        stream.shutdown();
+        if (nw::ofstream os{ cache_path / ("bu" + jdate_str) }) {
+          os << bu_text ;
+          os.close();
+        }
+        if (nw::ofstream os{ cache_path / ("ca" + jdate_str) }) {
+          os << ca_text ;
+          os.close();
+        }
       }
-      catch(const std::exception&)
-      {
-        break ;
-      }
-      auto json_text_to_html = [](std::string_view in){
-        std::string result = lx::gsub( in, "\\\\u(%x%x%x%x)", "&#x%1;" );
-        result = lx::gsub( result, "\\\\/", "/" );
-        result = lx::gsub( result, "\\r", "" );
-        result = lx::gsub( result, "\\n", "" );
-        result = lx::gsub( result, "<a[^>]+>([^<]+)</a>", "%1" );
-        return result;
-      };
-      bu_text = json_text_to_html(bu_text);
-      ca_text = json_text_to_html(ca_text);
-
       std::ostringstream os;
       os << "<strong>" << target.format("%Jd %JM %JY г. по ст. ст.") << "</strong> "
          << target.format("(%Gd %GM %GY г. по н. ст.) ") ;
-
       out_bu << "<p id=\"bu-" << +target.month() << '-' << +target.day() << "\">"
         << os.view() << "</p>\n" << bu_text << '\n' << html_vertical_empty_space << '\n' ;
-
       out_ca << "<hr><p>" << os.view() << target.format("%WD") << "</p>\n" << ca_text << '\n'
         << html_vertical_empty_space << '\n' ;
-      stream.shutdown();
       last_processed_date = target.format("%Gd %GM %GY");
-      std::this_thread::sleep_for(std::chrono::seconds( distrib(gen) ));
-    }
+      if (!cache_hit) std::this_thread::sleep_for(ch::seconds( random(3,8) ));
+    } // end loop
 
     out_bu << "\n</body>\n</html>\n";
     out_ca << "\n</body>\n</html>\n";
