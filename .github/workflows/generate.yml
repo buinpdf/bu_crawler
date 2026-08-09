@@ -41,10 +41,10 @@ jobs:
       - name: download doc
         id: dl
         working-directory: build
-        run: |
-          echo "ldate=$(./bu_crawler ${{steps.my_env.outputs.year}} bu${{steps.my_env.outputs.year}}.html ca${{steps.my_env.outputs.year}}.html)" >> $GITHUB_OUTPUT
+        run: echo "ldate=$(./bu_crawler ${{steps.my_env.outputs.year}} bu${{steps.my_env.outputs.year}}.html ca${{steps.my_env.outputs.year}}.html)" >> $GITHUB_OUTPUT
 
       - name: save Cache
+        if: always()
         uses: actions/cache/save@v5
         with:
           key: ${{ runner.os }}_bu_crawler_cache
