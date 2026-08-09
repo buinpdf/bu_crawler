@@ -22,6 +22,7 @@ jobs:
           git config --global user.name "buinpdf"
           git config --global user.email "buinpdf@atomicmail.io"
           echo "year=$(date +%Y)" >> $GITHUB_OUTPUT
+          echo "timestamp=$(date +%s)" >> $GITHUB_OUTPUT
 
       - uses: actions/checkout@v4
 
@@ -35,7 +36,8 @@ jobs:
       - name: restore Cache
         uses: actions/cache/restore@v5
         with:
-          key: ${{ runner.os }}_bu_crawler_cache
+          key: sxzy
+          restore-keys: ${{ runner.os }}_bu_crawler_cach
           path: ${{github.workspace}}/build/bu_crawler_cache
         
       - name: download doc
@@ -44,11 +46,11 @@ jobs:
         run: echo "ldate=$(./bu_crawler ${{steps.my_env.outputs.year}} bu${{steps.my_env.outputs.year}}.html ca${{steps.my_env.outputs.year}}.html)" >> $GITHUB_OUTPUT
 
       - name: save Cache
-        if: always()
         uses: actions/cache/save@v5
         with:
-          key: ${{ runner.os }}_bu_crawler_cache
+          key: ${{ runner.os }}_bu_crawler_cache_${{ steps.my_env.outputs.timestamp }}
           path: ${{github.workspace}}/build/bu_crawler_cache
+          save-always: true
 
       - name: generate pdf
         working-directory: build
