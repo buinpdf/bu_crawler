@@ -94,7 +94,7 @@ int main(int argc, char** argv)
         is.close();
       }
     }
-    if (!cache_data.empty()) nw::cout << "load from cache " << cache_data.size() << " entries.\n" ;
+//    if (!cache_data.empty()) nw::cout << "load from cache " << cache_data.size() << " entries.\n" ;
 
     // generate target dates
     for (int m = 1; m < 13; ++m) for (int d = 1; d <= dc::month_length(m, dc::is_leap_year(argv[1], dc::Julian)); ++d) {
