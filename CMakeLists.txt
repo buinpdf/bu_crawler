@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 
 project(bu_crawler)
 
-find_package(Boost REQUIRED)
+find_package(Boost CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED COMPONENTS Crypto SSL)
 
 add_executable (${PROJECT_NAME}
